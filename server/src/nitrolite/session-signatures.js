@@ -8,7 +8,7 @@
  * FLOW:
  * 1. Guest signs first → stores signature
  * 2. Host signs second → stores signature
- * 3. Once both collected → submit to Nitrolite
+ * 3. Once both collected → submit to Yellow Network via SDK
  *
  * KEY FUNCTIONS:
  * - addAppSessionSignature() - Store player signature
@@ -16,7 +16,6 @@
  * ============================================================================
  */
 
-import { parseAnyRPCResponse, RPCMethod } from "@erc7824/nitrolite";
 import { ethers } from 'ethers';
 import logger from '../utils/logger.js';
 import { getRPCClient } from './client.js';
@@ -99,12 +98,9 @@ export async function createAppSessionWithSignatures(roomId) {
   logger.nitro(`Server (${pending.serverAddress}): signed`);
 
   try {
-    const rpcClient = await getRPCClient();
+    const rpcClient = getRPCClient();
 
-    // Ensure WebSocket is connected
-    await rpcClient.ensureConnected();
-
-    // Build complete request with all signatures
+    // Build complete signature list
     const sigA = pending.signatures.get(pending.participantA);
     const sigB = pending.signatures.get(pending.participantB);
     const sigServer = pending.serverSignature;
@@ -129,96 +125,34 @@ export async function createAppSessionWithSignatures(roomId) {
     logger.data(`    Length: ${sigServer ? sigServer.length : 'null'}`);
     logger.nitro('');
     logger.nitro('⚠️  CRITICAL: Client must sign using SESSION KEY, not main wallet!');
-    logger.nitro('⚠️  CRITICAL: Client must use createAppSessionMessage() from @erc7824/nitrolite');
+    logger.nitro('⚠️  CRITICAL: Client must use packCreateAppSessionRequestV1() from @yellow-org/sdk');
     logger.nitro('═══════════════════════════════════════════════════════');
 
-    const completeRequest = {
-      req: pending.requestToSign,
-      sig: [
-        sigA,
-        sigB,
-        sigServer
-      ]
-    };
+    logger.nitro('▶ Sending: createAppSession via SDK');
 
-    logger.data('Complete request structure:', completeRequest);
-    logger.data('Request array (for signing):', pending.requestToSign);
-    logger.nitro('▶ Sending: create_app_session');
-
-    // Check WebSocket connection
-    if (!rpcClient.ws) {
-      logger.error('RPC client has no WebSocket instance');
-      throw new Error('RPC client WebSocket not initialized');
-    }
-
-    const wsStates = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'];
-    const currentState = wsStates[rpcClient.ws.readyState] || `UNKNOWN(${rpcClient.ws.readyState})`;
-
-    if (rpcClient.ws.readyState !== 1) {
-      logger.error(`RPC client WebSocket not ready. Current state: ${currentState}`);
-      throw new Error(`RPC client WebSocket not connected (state: ${currentState})`);
-    }
-
-    logger.nitro(`WebSocket connected and ready (state: ${currentState})`);
-
-    // Send directly to WebSocket (multi-signature requests need direct send)
-    const requestString = JSON.stringify(completeRequest);
-    logger.data('Sending JSON:', requestString);
-
-    const response = await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout waiting for app session creation'));
-      }, 30000);
-
-      const handler = (data) => {
-        try {
-          const msg = typeof data === 'string' ? data : data.toString();
-          const parsed = JSON.parse(msg);
-
-          // Check if this is a response (has "res" array)
-          if (parsed.res && Array.isArray(parsed.res)) {
-            const [reqId, method, params] = parsed.res;
-
-            // Match by method name
-            if (method === 'create_app_session') {
-              clearTimeout(timeout);
-              rpcClient.ws.removeListener('message', handler);
-              logger.nitro('◀ Received: create_app_session response');
-              logger.data('Response:', params);
-              resolve(params);
-            }
-          }
-          // Check for error
-          else if (parsed.err && Array.isArray(parsed.err)) {
-            const [reqId, errorCode, errorMsg] = parsed.err;
-            clearTimeout(timeout);
-            rpcClient.ws.removeListener('message', handler);
-            logger.error('◀ Received error:', errorMsg);
-            reject(new Error(`Create app session failed: ${errorMsg}`));
-          }
-        } catch (err) {
-          // Ignore parsing errors for other messages
-        }
-      };
-
-      rpcClient.ws.on('message', handler);
-      rpcClient.ws.send(requestString);
-    });
+    // Submit via SDK Client
+    const result = await rpcClient.client.createAppSession(
+      pending.appDefinition,
+      pending.sessionDataString,
+      [sigA, sigB, sigServer]
+    );
 
     // Extract app session ID
-    const appSessionId = response.app_session_id || response.appSessionId;
+    const appSessionId = result.appSessionId;
 
     if (!appSessionId) {
       logger.error('No app session ID in response!');
-      logger.data('Response object:', response);
+      logger.data('Response object:', result);
       throw new Error('App session created but no ID returned');
     }
 
     logger.nitro(`✓ App session created with ID: ${appSessionId}`);
 
     // Calculate fee information
-    const betAmount = pending.appSessionData.allocations[0].amount;
-    const serverFee = '0'; // Server fee (currently 0)
+    const betAmount = pending.appDefinition.participants.length > 0
+      ? JSON.parse(pending.sessionDataString).betAmount
+      : '0';
+    const serverFee = '0';
 
     // Store active session with move tracking and fee history
     setAppSession(roomId, {
@@ -232,8 +166,8 @@ export async function createAppSessionWithSignatures(roomId) {
       feeHistory: [
         {
           event: 'session_created',
-          timestamp: pending.requestToSign[0], // Original creation time
-          timestampISO: new Date(pending.requestToSign[0]).toISOString(),
+          timestamp: Number(pending.nonce),
+          timestampISO: new Date(Number(pending.nonce)).toISOString(),
           serverAddress: pending.serverAddress,
           feeCharged: serverFee,
           feeUsed: false,

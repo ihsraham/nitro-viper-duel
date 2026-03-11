@@ -1,6 +1,6 @@
 /**
- * Signer utilities for Nitrolite integration
- * Creates signers compatible with @erc7824/nitrolite library
+ * Signer utilities for Yellow Network SDK integration
+ * Creates signers compatible with @yellow-org/sdk library
  */
 import { ethers } from 'ethers';
 import logger from '../utils/logger.js';

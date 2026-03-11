@@ -7,9 +7,9 @@
  *
  * FLOW:
  * 1. Game ends with winner determined
- * 2. Create close message with fund distribution
+ * 2. Create state update with Close intent and fund distribution
  * 3. Server signs (has 100% voting power)
- * 4. Submit to Nitrolite
+ * 4. Submit to Yellow Network via SDK
  * 5. Winner gets all funds
  *
  * YELLOW NETWORK AUDIT TRAIL:
@@ -38,7 +38,8 @@
  * ============================================================================
  */
 
-import { createCloseAppSessionMessage, parseAnyRPCResponse, RPCMethod } from "@erc7824/nitrolite";
+import { AppStateUpdateIntent, packAppStateUpdateV1 } from "@yellow-org/sdk";
+import Decimal from "decimal.js";
 import { ethers } from 'ethers';
 import logger from '../utils/logger.js';
 import { getRPCClient } from './client.js';
@@ -49,6 +50,7 @@ import { getAppSession, deleteAppSession } from './session-storage.js';
  *
  * @param {string} roomId - Room ID
  * @param {string|null} winnerEOA - Winner's address (null for tie)
+ * @param {Object} gameData - Additional game data (endCondition, finalScores)
  * @returns {Promise<void>}
  */
 export async function closeAppSession(roomId, winnerEOA = null, gameData = {}) {
@@ -63,31 +65,19 @@ export async function closeAppSession(roomId, winnerEOA = null, gameData = {}) {
   logger.nitro(`Winner: ${winnerEOA || 'TIE'}`);
 
   try {
-    const rpcClient = await getRPCClient();
-
-    // Ensure WebSocket is connected
-    await rpcClient.ensureConnected();
-
+    const rpcClient = getRPCClient();
     const betAmount = parseFloat(session.betAmount) || 0;
     const totalPot = betAmount * 2;
-
-    // Format winner address
     const formattedWinner = winnerEOA ? ethers.getAddress(winnerEOA) : null;
 
     // Create final session data with complete game history for Yellow Network audit
     const finalSessionData = {
-      // Game Metadata
       gameType: 'viper_duel',
       version: '1.0',
-      protocol: 'NitroRPC/0.4',
-
-      // Financial Data
       betAmount: session.betAmount,
       currency: 'usdc',
       totalPot: totalPot.toString(),
       serverFee: '0',
-
-      // Complete Fee History (for Yellow Network audit)
       feeHistory: [
         ...(session.feeHistory || []),
         {
@@ -100,16 +90,12 @@ export async function closeAppSession(roomId, winnerEOA = null, gameData = {}) {
           winnerPayout: formattedWinner ? totalPot.toString() : null,
           player1Payout: !formattedWinner ? session.betAmount : (formattedWinner === session.participantA ? totalPot.toString() : '0'),
           player2Payout: !formattedWinner ? session.betAmount : (formattedWinner === session.participantB ? totalPot.toString() : '0'),
-          serverPayout: '0' // Server gets no payout (fee was 0)
+          serverPayout: '0'
         }
       ],
-
-      // Timing Data
       startTime: session.createdAt,
       endTime: Date.now(),
       duration: Date.now() - session.createdAt,
-
-      // Player Information
       players: {
         player1: {
           address: session.participantA,
@@ -124,24 +110,16 @@ export async function closeAppSession(roomId, winnerEOA = null, gameData = {}) {
           payout: !formattedWinner ? session.betAmount : (formattedWinner === session.participantB ? totalPot.toString() : '0')
         }
       },
-
-      // Game Outcome
       gameState: 'closed',
       winner: formattedWinner,
       endCondition: gameData.endCondition || (formattedWinner ? 'collision' : 'tie'),
       finalScores: gameData.finalScores || {},
-
-      // Complete Move History (for dispute resolution)
       moves: session.moves || [],
       totalMoves: (session.moves || []).length,
-
-      // Move Statistics
       movesByPlayer: {
         [session.participantA]: (session.moves || []).filter(m => m.player === session.participantA).length,
         [session.participantB]: (session.moves || []).filter(m => m.player === session.participantB).length
       },
-
-      // Verification Data
       appSessionId: session.appSessionId,
       serverAddress: session.serverAddress,
       closedAt: new Date().toISOString()
@@ -154,21 +132,9 @@ export async function closeAppSession(roomId, winnerEOA = null, gameData = {}) {
       // TIE: Return funds to original owners
       logger.nitro('Game tied - returning funds');
       allocations = [
-        {
-          participant: session.participantA,
-          asset: 'usdc',
-          amount: session.betAmount
-        },
-        {
-          participant: session.participantB,
-          asset: 'usdc',
-          amount: session.betAmount
-        },
-        {
-          participant: session.serverAddress,
-          asset: 'usdc',
-          amount: '0'
-        }
+        { participant: session.participantA, asset: 'usdc', amount: new Decimal(session.betAmount) },
+        { participant: session.participantB, asset: 'usdc', amount: new Decimal(session.betAmount) },
+        { participant: session.serverAddress, asset: 'usdc', amount: new Decimal('0') }
       ];
     } else {
       // WINNER: Winner takes all
@@ -179,32 +145,12 @@ export async function closeAppSession(roomId, winnerEOA = null, gameData = {}) {
         : session.participantA;
 
       allocations = [
-        {
-          participant: formattedWinner,
-          asset: 'usdc',
-          amount: totalPot.toString()
-        },
-        {
-          participant: loser,
-          asset: 'usdc',
-          amount: '0'
-        },
-        {
-          participant: session.serverAddress,
-          asset: 'usdc',
-          amount: '0'
-        }
+        { participant: formattedWinner, asset: 'usdc', amount: new Decimal(totalPot.toString()) },
+        { participant: loser, asset: 'usdc', amount: new Decimal('0') },
+        { participant: session.serverAddress, asset: 'usdc', amount: new Decimal('0') }
       ];
     }
 
-    // Create close message
-    const closeData = {
-      app_session_id: session.appSessionId,
-      allocations,
-      session_data: JSON.stringify(finalSessionData)
-    };
-
-    logger.data('Close session data:', closeData);
     logger.nitro('═══════════════════════════════════════════════════════');
     logger.nitro('COMPLETE GAME HISTORY FOR YELLOW NETWORK AUDIT:');
     logger.nitro('═══════════════════════════════════════════════════════');
@@ -235,68 +181,24 @@ export async function closeAppSession(roomId, winnerEOA = null, gameData = {}) {
     }
     logger.nitro('═══════════════════════════════════════════════════════');
 
-    // Sign with session signer
-    const sign = rpcClient.sessionSigner || rpcClient.signMessage.bind(rpcClient);
-    const closeMessage = await createCloseAppSessionMessage(sign, closeData);
+    // Create state update with Close intent
+    const stateUpdate = {
+      appSessionId: session.appSessionId,
+      intent: AppStateUpdateIntent.Close,
+      version: BigInt(1),
+      allocations,
+      sessionData: JSON.stringify(finalSessionData)
+    };
 
-    logger.nitro('▶ Sending: close_app_session');
-    logger.data('Close message:', closeMessage);
+    // Sign the state update
+    const hash = packAppStateUpdateV1(stateUpdate);
+    const serverSig = await rpcClient.appSessionSigner.signMessage(hash);
 
-    // Check WebSocket connection
-    if (!rpcClient.ws) {
-      logger.error('RPC client has no WebSocket instance');
-      throw new Error('RPC client WebSocket not initialized');
-    }
+    logger.nitro('▶ Sending: close app session via submitAppState');
+    logger.data('State update:', stateUpdate);
 
-    const wsStates = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'];
-    const currentState = wsStates[rpcClient.ws.readyState] || `UNKNOWN(${rpcClient.ws.readyState})`;
-
-    if (rpcClient.ws.readyState !== 1) {
-      logger.error(`RPC client WebSocket not ready. Current state: ${currentState}`);
-      throw new Error(`RPC client WebSocket not connected (state: ${currentState})`);
-    }
-
-    logger.debug(`WebSocket connected and ready (state: ${currentState})`);
-
-    // Send directly to WebSocket
-    await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout waiting for session closure'));
-      }, 30000);
-
-      const handler = (data) => {
-        try {
-          const msg = typeof data === 'string' ? data : data.toString();
-          const parsed = JSON.parse(msg);
-
-          // Check if this is a response
-          if (parsed.res && Array.isArray(parsed.res)) {
-            const [reqId, method, params] = parsed.res;
-
-            if (method === 'close_app_session') {
-              clearTimeout(timeout);
-              rpcClient.ws.removeListener('message', handler);
-              logger.nitro('◀ Received: close_app_session response');
-              logger.data('Response:', params);
-              resolve(params);
-            }
-          }
-          // Check for error
-          else if (parsed.err && Array.isArray(parsed.err)) {
-            const [reqId, errorCode, errorMsg] = parsed.err;
-            clearTimeout(timeout);
-            rpcClient.ws.removeListener('message', handler);
-            logger.error('◀ Received error:', errorMsg);
-            reject(new Error(`Close app session failed: ${errorMsg}`));
-          }
-        } catch (err) {
-          // Ignore parsing errors for other messages
-        }
-      };
-
-      rpcClient.ws.on('message', handler);
-      rpcClient.ws.send(closeMessage);
-    });
+    // Submit via SDK Client
+    await rpcClient.client.submitAppState(stateUpdate, [serverSig]);
 
     logger.nitro('✓ App session closed successfully');
 

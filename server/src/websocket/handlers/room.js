@@ -105,10 +105,9 @@ export async function handleJoinRoom(ws, payload, { roomManager, connections, se
         guestConnection.ws.send(JSON.stringify({
           type: 'appSession:signatureRequest',
           roomId: result.roomId,
-          appSessionData: appSessionMessage.appSessionData,
           appDefinition: appSessionMessage.appDefinition,
           participants: appSessionMessage.participants,
-          requestToSign: appSessionMessage.requestToSign
+          hashToSign: appSessionMessage.hashToSign
         }));
       }
       

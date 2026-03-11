@@ -5,15 +5,15 @@ Yellow Network error: `"missing signature for participant 0x02F499..."`
 
 This means Yellow Network **cannot verify** the signature. This happens when:
 1. Client signs with main wallet instead of session key
-2. Client doesn't use Nitrolite's `createAppSessionMessage()`
-3. Client modifies the `appSessionData` before signing
+2. Client doesn't use the correct signing approach from `@yellow-org/sdk`
+3. Client modifies the `hashToSign` before signing
 4. Session key wasn't properly authorized
 
 ## Critical Requirements
 
 ⚠️ **MUST use SESSION KEY to sign, NOT main wallet**
-⚠️ **MUST use `createAppSessionMessage()` from @erc7824/nitrolite**
-⚠️ **MUST sign the EXACT `appSessionData` from server (don't modify it)**
+⚠️ **MUST use `AppSessionKeySignerV1` + `EthereumMsgSigner` from `@yellow-org/sdk`**
+⚠️ **MUST sign the EXACT `hashToSign` hex string from server (don't modify it)**
 ⚠️ **Session key MUST be properly authorized via EIP-712 auth**
 
 ## How Client Must Sign
@@ -25,53 +25,40 @@ When the client receives `appSession:signatureRequest` or `appSession:startGameR
 {
   type: 'appSession:signatureRequest', // or 'appSession:startGameRequest'
   roomId: 'room-id',
-  appSessionData: {...},
   appDefinition: {...},
   participants: [...],
-  requestToSign: [requestId, method, params, timestamp]
+  hashToSign: '0x...'  // Hex hash to sign
 }
 ```
 
 ### ✅ CORRECT Approach: Step-by-Step
 
-#### Step 1: Setup Session Key (Do this ONCE during auth)
+#### Step 1: Setup Session Key Signer (Do this ONCE during auth)
 
 ```typescript
-import { ethers } from 'ethers';
-import { createMessageSigner } from '@erc7824/nitrolite';
+import { EthereumMsgSigner, AppSessionKeySignerV1 } from '@yellow-org/sdk';
+import type { Hex } from 'viem';
 
-// Create ephemeral session key
-const sessionKeyWallet = ethers.Wallet.createRandom();
+// Create ephemeral session key (already generated during key pair setup)
+const sessionKeyPrivateKey: Hex = '0x...'; // from stored key pair
 
-// Create signer for Nitrolite (wrap the wallet)
-const sessionKeySigner = createMessageSigner(sessionKeyWallet);
-
-// Store for later use
-this.sessionKey = sessionKeyWallet;
-this.sessionKeySigner = sessionKeySigner;
+// Create signers
+const innerSigner = new EthereumMsgSigner(sessionKeyPrivateKey);
+const signer = new AppSessionKeySignerV1(innerSigner);
 ```
 
-#### Step 2: Sign App Session Request
+#### Step 2: Sign the Hash
 
 ```typescript
-import { createAppSessionMessage } from '@erc7824/nitrolite';
-
 // When server sends appSession:signatureRequest or appSession:startGameRequest
-const { appSessionData } = serverMessage;
+const { hashToSign, roomId } = serverMessage;
 
-// Sign using the SESSION KEY signer (from Step 1)
-const signedMessage = await createAppSessionMessage(
-  this.sessionKeySigner,  // ← Use the signer from Step 1
-  appSessionData          // ← Use EXACT data from server
-);
-
-// Parse and extract signature
-const parsed = JSON.parse(signedMessage);
-const signature = parsed.sig[0];
+// Sign the hash using session key signer
+const signature = await signer.signMessage(hashToSign as Hex);
 
 // Send signature back to server
 ws.send(JSON.stringify({
-  type: 'appSession:signature',
+  type: 'appSession:signature', // or 'appSession:startGame'
   payload: {
     roomId,
     signature
@@ -81,70 +68,64 @@ ws.send(JSON.stringify({
 
 ### ❌ WRONG Approaches
 
-**Don't sign the requestToSign array directly:**
-```typescript
-// ❌ WRONG - This won't work!
-const signature = await wallet.signMessage(JSON.stringify(requestToSign));
-```
-
 **Don't sign with main wallet:**
 ```typescript
 // ❌ WRONG - Must use session key, not main wallet!
-const signature = await mainWallet.signMessage(...);
+const signature = await mainWallet.signMessage(hashToSign);
 ```
 
-**Don't recreate appSessionData:**
+**Don't modify the hash:**
 ```typescript
-// ❌ WRONG - Must use exact appSessionData from server!
-const myAppSessionData = { ...modified };
-const signature = await createAppSessionMessage(signer, myAppSessionData);
+// ❌ WRONG - Must use exact hashToSign from server!
+const modifiedHash = '0x' + hashToSign.slice(2).toUpperCase();
+const signature = await signer.signMessage(modifiedHash);
+```
+
+**Don't use raw ethers signing:**
+```typescript
+// ❌ WRONG - Must use AppSessionKeySignerV1!
+const signature = await wallet.signMessage(hashToSign);
 ```
 
 ## Key Points
 
 1. **Use SESSION KEY** - The signature must come from the session key that was authorized via EIP-712 auth
-2. **Use Nitrolite Library** - Don't do raw signing, use `createAppSessionMessage`
-3. **Use Exact Data** - Sign the exact `appSessionData` received from server
-4. **Extract Signature** - Parse the result and extract `sig[0]`
+2. **Use SDK Signers** - Use `EthereumMsgSigner` + `AppSessionKeySignerV1` from `@yellow-org/sdk`
+3. **Use Exact Hash** - Sign the exact `hashToSign` received from server
+4. **Signature is returned directly** - No need to parse JSON or extract from arrays
 
 ## Verification
 
 The signature will be verified by Yellow Network against:
 - The participant address in `participants` array (main wallet address)
 - The session key that was authorized for that wallet
-- The exact request structure being submitted
+- The exact hash being submitted
 
 ## Troubleshooting Checklist
 
 ### 1. Check Session Key Setup
 ```typescript
 // ❌ WRONG - Using main wallet
-const signer = createMessageSigner(mainWallet);
+const signer = new EthereumMsgSigner(mainWalletPrivateKey);
 
 // ✅ CORRECT - Using session key
-const sessionKey = ethers.Wallet.createRandom();
-const signer = createMessageSigner(sessionKey);
+const innerSigner = new EthereumMsgSigner(sessionKeyPrivateKey);
+const signer = new AppSessionKeySignerV1(innerSigner);
 ```
 
-### 2. Check createMessageSigner Import
+### 2. Check SDK Import
 ```typescript
 // ✅ CORRECT
-import { createMessageSigner } from '@erc7824/nitrolite';
-
-// or check if using custom wrapper
-import { createMessageSigner } from './utils/createSigner';
+import { EthereumMsgSigner, AppSessionKeySignerV1 } from '@yellow-org/sdk';
 ```
 
-### 3. Check appSessionData Usage
+### 3. Check hashToSign Usage
 ```typescript
-// ❌ WRONG - Modified or recreated
-const myData = { ...appSessionData, custom: 'field' };
+// ❌ WRONG - Modified hash
+const sig = await signer.signMessage(hashToSign + 'extra');
 
-// ✅ CORRECT - Use exact data from server
-const signedMessage = await createAppSessionMessage(
-  sessionKeySigner,
-  appSessionData  // ← Don't modify this!
-);
+// ✅ CORRECT - Use exact hash from server
+const sig = await signer.signMessage(hashToSign as Hex);
 ```
 
 ### 4. Verify Signature Format
@@ -155,9 +136,8 @@ The signature should:
 
 ### 5. Check Console for Errors
 Look for:
-- "Session key not initialized"
-- "Invalid signer"
-- Errors from createAppSessionMessage
+- "No session key available for signing"
+- "Unknown signing error"
 - Network errors
 
 ### 6. Common Mistakes
@@ -165,34 +145,36 @@ Look for:
 **Mistake 1: Signing with main wallet**
 ```typescript
 // ❌ WRONG
-const wallet = await connector.getSigner();
-await createAppSessionMessage(wallet, appSessionData);
+const mainSigner = new EthereumMsgSigner(mainWalletKey);
+await mainSigner.signMessage(hashToSign);
 ```
 
 **Mistake 2: Not storing session key**
 ```typescript
-// ❌ WRONG - Creates new session key each time
-const sessionKey = ethers.Wallet.createRandom();
+// ❌ WRONG - Creates new key each time
+const key = generateKeyPair();
+const signer = new EthereumMsgSigner(key.privateKey);
 
-// ✅ CORRECT - Store and reuse
-this.sessionKey = ethers.Wallet.createRandom();
-this.sessionKeySigner = createMessageSigner(this.sessionKey);
+// ✅ CORRECT - Store and reuse from localStorage
+const storedKey = localStorage.getItem('crypto_keypair');
+const signer = new EthereumMsgSigner(storedKey.privateKey);
 ```
 
-**Mistake 3: Using wrong signing method**
+**Mistake 3: Using wrong signer class**
 ```typescript
-// ❌ WRONG
-const sig = await wallet.signMessage(JSON.stringify(appSessionData));
+// ❌ WRONG - EthereumMsgSigner alone
+const sig = await new EthereumMsgSigner(key).signMessage(hash);
 
-// ✅ CORRECT
-const signedMsg = await createAppSessionMessage(sessionKeySigner, appSessionData);
-const sig = JSON.parse(signedMsg).sig[0];
+// ✅ CORRECT - Wrapped in AppSessionKeySignerV1
+const inner = new EthereumMsgSigner(key);
+const signer = new AppSessionKeySignerV1(inner);
+const sig = await signer.signMessage(hash);
 ```
 
 ## Quick Debug Steps
 
-1. **Verify wallet address** - Check wallet.address matches one in participants array
-2. **Verify session key exists** - console.log(this.sessionKey.address)
-3. **Verify using Nitrolite** - Check using createAppSessionMessage from @erc7824/nitrolite
+1. **Verify wallet address** - Check wallet address matches one in participants array
+2. **Verify session key exists** - `console.log(sessionKey.address)`
+3. **Verify using SDK signers** - Check using `AppSessionKeySignerV1` from `@yellow-org/sdk`
 4. **Verify signature format** - Should be "0x..." and 132 chars
-5. **Verify exact data** - Don't modify appSessionData before signing
+5. **Verify exact hash** - Don't modify `hashToSign` before signing

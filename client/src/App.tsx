@@ -171,7 +171,7 @@ function App() {
         // For now, just reload the page
         window.location.reload();
 
-        // TODO: Implement proper reset logic when @erc7824/nitrolite is integrated
+        // TODO: Implement proper reset logic when @yellow-org/sdk is integrated
     };
 
     // Handle error close

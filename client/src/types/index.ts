@@ -2,7 +2,7 @@
  * Game and WebSocket types for Viper Duel
  */
 
-import type { CreateAppSessionRequest } from '@erc7824/nitrolite';
+import type { AppDefinitionV1 } from '@yellow-org/sdk';
 
 // Snake direction
 export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
@@ -184,19 +184,17 @@ export interface OnlineUsersMessage extends WebSocketMessage {
 export interface AppSessionSignatureRequestMessage extends WebSocketMessage {
   type: 'appSession:signatureRequest';
   roomId: string;
-  appSessionData: CreateAppSessionRequest;  // ✅ Fixed: object, not array
-  appDefinition: unknown;
+  appDefinition: AppDefinitionV1;
   participants: string[];
-  requestToSign: unknown[];
+  hashToSign: string;
 }
 
 export interface AppSessionStartGameRequestMessage extends WebSocketMessage {
   type: 'appSession:startGameRequest';
   roomId: string;
-  appSessionData: CreateAppSessionRequest;  // ✅ Fixed: object, not array
-  appDefinition: unknown;
+  appDefinition: AppDefinitionV1;
   participants: string[];
-  requestToSign: unknown[];
+  hashToSign: string;
 }
 
 export interface AppSessionSignatureConfirmedMessage extends WebSocketMessage {

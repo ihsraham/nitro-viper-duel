@@ -43,7 +43,7 @@ const wss = createWebSocketServer();
 const roomManager = createRoomManager();
 
 // Track active connections
-// TODO: Use @erc7824/nitrolite for connection tracking when available
+// TODO: Use @yellow-org/sdk for connection tracking when available
 const connections = new Map();
 
 // Track online users count
@@ -106,10 +106,9 @@ async function handleAppSessionSignature(ws, payload, { roomManager, connections
         hostConnection.ws.send(JSON.stringify({
           type: 'appSession:startGameRequest',
           roomId,
-          appSessionData: appSessionMessage.appSessionData,
           appDefinition: appSessionMessage.appDefinition,
-          participants: appSessionMessage.participants,
-          requestToSign: appSessionMessage.requestToSign
+          participants: [appSessionMessage.participantA, appSessionMessage.participantB, appSessionMessage.serverAddress],
+          hashToSign: appSessionMessage.hashToSign
         }));
         
         logger.nitro(`Sent start game request to host ${room.players.host}`);
@@ -313,7 +312,7 @@ wss.on('connection', (ws) => {
 // Initialize Nitrolite client and channel when server starts
 async function initializeNitroliteServices() {
   try {
-    logger.nitro('Initializing Nitrolite services...');
+    logger.nitro('Initializing Yellow Network SDK...');
     const url = process.env.WS_URL || process.env.NITROLITE_RPC_URL;
     const privateKey = process.env.SERVER_PRIVATE_KEY;
 
@@ -322,23 +321,13 @@ async function initializeNitroliteServices() {
     }
 
     const rpcClient = await initializeRPCClient(url, privateKey);
-    logger.nitro('Nitrolite RPC client initialized successfully');
+    logger.nitro('Yellow Network SDK client initialized and connected');
 
-    // Connect to Nitrolite WebSocket
-    await rpcClient.connect();
-    logger.nitro('Connected to Nitrolite RPC server');
-
-    // Check if we have an existing channel
-    if (rpcClient.channel) {
-      logger.nitro('Connected to existing channel');
-      logger.data('Channel info', rpcClient.channel);
-    } else {
-      logger.warn('No channel established after initialization');
-      logger.nitro('Channels will be created as needed via getChannelInfo');
-    }
+    // SDK Client.create() handles connection and authentication automatically
+    logger.nitro(`Server address: ${rpcClient.address}`);
   } catch (error) {
-    logger.error('Failed to initialize Nitrolite services:', error);
-    logger.system('Continuing in mock mode without Nitrolite channel');
+    logger.error('Failed to initialize Yellow Network SDK:', error);
+    logger.system('Continuing in mock mode without Yellow Network connection');
   }
 }
 

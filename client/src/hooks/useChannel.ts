@@ -4,7 +4,7 @@ import { NitroliteStore, WalletStore } from "../store";
 import { useStore } from "../store/storeUtils";
 import { parseTokenUnits } from "./utils/tokenDecimals";
 import { useWebSocketContext } from "../context/WebSocketContext";
-import type { State } from "@erc7824/nitrolite";
+import type { State } from "@yellow-org/sdk";
 import { USDC_ADDRESS } from '../context/NitroliteClientWrapper';
 
 // Define localStorage keys
@@ -13,8 +13,6 @@ const STORAGE_KEYS = {
     CHANNEL_STATE: "nitrolite_channel_state",
     CHANNEL_ID: "nitrolite_channel_id",
 };
-
-const EMPTY_STATE_DATA = "0x";
 
 /**
  * Custom hook for managing Nitrolite channels
@@ -103,19 +101,21 @@ export function useChannel() {
                 console.log("Available client methods:", Object.keys(client));
 
                 const amountBigInt = parseTokenUnits(tokenAddress, amount);
-                const result = await client.createChannel(USDC_ADDRESS, {
-                    initialAllocationAmounts: [amountBigInt, BigInt(0)],
-                    stateData: EMPTY_STATE_DATA,
-                });
+                const { Decimal } = await import("decimal.js");
+                const decimalAmount = new Decimal(amountBigInt.toString());
 
-                saveChannelToStorage(result.initialState, result.channelId);
+                // The new SDK handles channel creation internally through deposit
+                const resultState = await client.deposit(BigInt(137), USDC_ADDRESS, decimalAmount);
+
+                const channelId = resultState?.id || "";
+                saveChannelToStorage(resultState, channelId);
                 WalletStore.setChannelOpen(true);
 
-                if (setNitroliteChannel && result) {
-                    setNitroliteChannel(result as any);
+                if (setNitroliteChannel && resultState) {
+                    setNitroliteChannel(resultState as any);
                 }
 
-                return result;
+                return resultState;
             } catch (error) {
                 console.error("Error creating channel:", error);
                 setError(error instanceof Error ? error.message : String(error));
@@ -152,8 +152,10 @@ export function useChannel() {
             console.log("[depositToChannel] Available client methods:", Object.keys(client));
 
             const amountBigInt = typeof amount === "string" && !amount.startsWith("0x") ? parseTokenUnits(tokenAddress, amount) : BigInt(amount);
+            const { Decimal } = await import("decimal.js");
+            const decimalAmount = new Decimal(amountBigInt.toString());
 
-            await client.deposit(USDC_ADDRESS, amountBigInt);
+            await client.deposit(BigInt(137), USDC_ADDRESS, decimalAmount);
             WalletStore.openChannel(tokenAddress, amountBigInt.toString());
 
             return true;

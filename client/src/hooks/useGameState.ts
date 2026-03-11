@@ -234,7 +234,7 @@ export function useGameState(
     setAwaitingHostStart(false);
   }, []);
 
-  // TODO: Add integration with @erc7824/nitrolite for persisting game state
+  // TODO: Add integration with @yellow-org/sdk for persisting game state
   
   return {
     gameState,
