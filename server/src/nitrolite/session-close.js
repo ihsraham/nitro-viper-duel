@@ -66,7 +66,6 @@ export async function closeAppSession(roomId, winnerEOA = null, gameData = {}) {
     const rpcClient = await getRPCClient();
 
     // Ensure WebSocket is connected
-    await rpcClient.ensureConnected();
 
     const betAmount = parseFloat(session.betAmount) || 0;
     const totalPot = betAmount * 2;

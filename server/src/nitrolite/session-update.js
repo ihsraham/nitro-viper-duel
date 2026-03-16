@@ -40,7 +40,6 @@ export async function submitAppState(roomId, gameStateUpdate = {}) {
     const rpcClient = await getRPCClient();
 
     // Ensure WebSocket is connected
-    await rpcClient.ensureConnected();
 
     // Keep current allocations (no fund redistribution during game)
     const allocations = [

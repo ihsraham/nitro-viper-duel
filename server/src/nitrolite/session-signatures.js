@@ -102,7 +102,6 @@ export async function createAppSessionWithSignatures(roomId) {
     const rpcClient = await getRPCClient();
 
     // Ensure WebSocket is connected
-    await rpcClient.ensureConnected();
 
     // Build complete request with all signatures
     const sigA = pending.signatures.get(pending.participantA);

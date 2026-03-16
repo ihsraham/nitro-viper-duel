@@ -48,10 +48,30 @@ export async function initializeRPCClient(url, privateKey) {
 
     logger.system(`NitroliteClient initialized with address: ${serverAddress}`);
 
-    // Wrap with backward-compatible interface expected by session files
+    // Backward-compatible interface expected by session files
     clientInstance.sessionKey = { address: serverAddress };
     clientInstance.sessionSigner = sessionSigner;
     clientInstance.address = serverAddress;
+
+    // Expose a WebSocket-like interface for session files that send raw RPC
+    // messages via rpcClient.ws.send() and listen via rpcClient.ws.on('message').
+    // The compat client's underlying SDK client uses a dialer with a WebSocket.
+    const innerWs = clientInstance.innerClient?._rpcClient?._dialer?.ws;
+    if (innerWs) {
+        clientInstance.ws = innerWs;
+    } else {
+        // Fallback: create a connected WS that the session files can use
+        const rawWs = new WebSocket(url);
+        await new Promise((resolve, reject) => {
+            rawWs.onopen = resolve;
+            rawWs.onerror = reject;
+        });
+        clientInstance.ws = rawWs;
+        logger.warn('Using fallback raw WebSocket for session RPC (innerClient WS not accessible)');
+    }
+
+    // No-op ensureConnected since compat client manages its own connection
+    clientInstance.ensureConnected = async () => {};
 
     return clientInstance;
 }
