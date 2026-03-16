@@ -72,7 +72,7 @@ const getAuthDomain = () => {
     };
 };
 
-const expire = String(Math.floor(Date.now() / 1000) + 24 * 60 * 60);
+const expire = BigInt(Math.floor(Date.now() / 1000) + 24 * 60 * 60);
 
 // ===== Connection =====
 
@@ -302,14 +302,12 @@ export class WebSocketClient {
         } else {
             console.log("No JWT token found, proceeding with challenge-response authentication");
             authRequest = await createAuthRequestMessage({
-                address: ethers.getAddress(privyWalletAddress) as `0x${string}`, // wallet
-                session_key: this.sessionKey.address as `0x${string}`, // ephemeral session key
-                app_name: "Viper Duel",
+                address: ethers.getAddress(privyWalletAddress) as `0x${string}`,
+                session_key: this.sessionKey.address as `0x${string}`,
+                application: "Viper Duel",
                 expires_at: expire,
                 scope: "all",
-                application: ethers.getAddress(privyWalletAddress) as `0x${string}`,
                 allowances: [
-                    // Asset allowances for the session
                     {
                         asset: "usdc",
                         amount: "100"
@@ -344,9 +342,8 @@ export class WebSocketClient {
                                 walletClient,
                                 {
                                     scope: "all",
-                                    application: privyWalletAddress,
-                                    participant: this.sessionKey.address,
-                                    expire: expire,
+                                    session_key: this.sessionKey.address as `0x${string}`,
+                                    expires_at: expire,
                                     allowances: [
                                         {
                                             asset: "usdc",
@@ -391,7 +388,12 @@ export class WebSocketClient {
 
                         // Authentication successful
                         const paramsForChannels = { participant: ethers.getAddress(privyWalletAddress) as `0x${string}` };
-                        const getChannelsMessage = NitroliteRPC.createRequest({method: RPCMethod.GetChannels, params: paramsForChannels});
+                        const getChannelsMessage = NitroliteRPC.createRequest({
+                            requestId: Date.now(),
+                            method: RPCMethod.GetChannels,
+                            params: paramsForChannels,
+                            timestamp: Math.floor(Date.now() / 1000),
+                        });
                         // Use session signer for RPC messages after authentication
                         const useSessionSigner = !!this.sessionSigner;
                         const signer = this.sessionSigner || this.signer.sign;

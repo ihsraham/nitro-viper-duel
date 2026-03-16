@@ -2,7 +2,9 @@
  * Game and WebSocket types for Viper Duel
  */
 
-import type { CreateAppSessionRequest } from '@yellow-org/sdk-compat';
+import type { CreateAppSessionRequestParams } from '@yellow-org/sdk-compat';
+
+type CreateAppSessionRequest = CreateAppSessionRequestParams;
 
 // Snake direction
 export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';

@@ -1,7 +1,5 @@
 import { type Hex } from "viem";
 import { ethers } from "ethers";
-import { type MessageSigner, type NitroliteRPCRequest } from '@yellow-org/sdk-compat';
-
 /**
  * Interface for a cryptographic keypair
  */
@@ -13,16 +11,6 @@ export interface CryptoKeypair {
 }
 
 /**
- * Interface for a wallet signer that can sign messages
- */
-export interface WalletSigner {
-    /** Ethereum address derived from the public key */
-    address: Hex;
-    /** Function to sign a message and return a hex signature */
-    sign: MessageSigner;
-}
-
-/**
  * Creates a signer from a private key using ethers.js v6
  * This signer is compatible with Nitrolite's MessageSigner interface
  *
@@ -30,14 +18,14 @@ export interface WalletSigner {
  * @returns A WalletSigner object that can sign messages
  * @throws Error if signer creation fails
  */
-export const createEthersSigner = (privateKey: string): WalletSigner => {
+export const createEthersSigner = (privateKey: string): { address: Hex; sign: (payload: unknown) => Promise<Hex> } => {
     try {
         // Create ethers wallet from private key
         const wallet = new ethers.Wallet(privateKey);
 
         return {
             address: ethers.getAddress(wallet.address) as Hex,
-            sign: async (payload: NitroliteRPCRequest): Promise<Hex> => {
+            sign: async (payload: unknown): Promise<Hex> => {
                 try {
                     // RPCData is a tuple: [RequestID, RPCMethod, object, Timestamp?]
                     // Stringify the payload to match server-side signing

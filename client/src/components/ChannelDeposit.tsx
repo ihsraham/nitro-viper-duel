@@ -18,7 +18,7 @@ export function ChannelDeposit() {
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-    const { createChannel, depositToChannel, isChannelOpen } = useChannel();
+    const { depositToChannel, isChannelOpen } = useChannel();
     const wallet = useStore(WalletStore.state);
 
     // Fixed amount, no change handler needed

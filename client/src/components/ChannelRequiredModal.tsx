@@ -22,7 +22,7 @@ interface ChannelRequiredModalProps {
 export function ChannelRequiredModal({ isOpen, onClose, onSuccess, mode, roomId }: ChannelRequiredModalProps) {
     const amount = "0.0001"; // Fixed amount
     const [step, setStep] = useState<"info" | "create" | "success">("info");
-    const { createChannel, depositToChannel, isLoading, error, isChannelOpen } = useChannel();
+    const { depositToChannel, isLoading, error, isChannelOpen } = useChannel();
 
     // Check if the modal should stay open when there's no channel
     useEffect(() => {

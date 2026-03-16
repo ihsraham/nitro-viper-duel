@@ -14,8 +14,6 @@ const STORAGE_KEYS = {
     CHANNEL_ID: "nitrolite_channel_id",
 };
 
-const EMPTY_STATE_DATA = "0x";
-
 /**
  * Custom hook for managing Nitrolite channels
  */
