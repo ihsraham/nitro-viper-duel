@@ -5,8 +5,8 @@
   "description": "WebSocket server for Viper Duel Snake game",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
+    "start": "node --experimental-specifier-resolution=node src/server.js",
+    "dev": "node --watch --experimental-specifier-resolution=node src/server.js",
     "lint": "eslint src/**/*.js"
   },
   "dependencies": {
