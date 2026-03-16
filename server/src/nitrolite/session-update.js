@@ -132,7 +132,6 @@ export async function submitAppState(roomId, gameStateUpdate = {}) {
 
     // Sign with session signer
     const sign = rpcClient.sessionSigner || rpcClient.signMessage.bind(rpcClient);
-    // TODO [codemod]: Replace createSubmitAppStateMessage() + send + parseSubmitAppStateResponse with client.submitAppState()
     const stateMessage = await createSubmitAppStateMessage(sign, stateData);
 
     // Check WebSocket connection

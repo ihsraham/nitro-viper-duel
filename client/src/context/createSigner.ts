@@ -37,7 +37,7 @@ export const createEthersSigner = (privateKey: string): WalletSigner => {
 
         return {
             address: ethers.getAddress(wallet.address) as Hex,
-            sign: async (payload: RPCData): Promise<Hex> => {
+            sign: async (payload: NitroliteRPCRequest): Promise<Hex> => {
                 try {
                     // RPCData is a tuple: [RequestID, RPCMethod, object, Timestamp?]
                     // Stringify the payload to match server-side signing

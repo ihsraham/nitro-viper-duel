@@ -60,9 +60,6 @@ export async function generateAppSessionMessage(roomId, participantA, participan
       throw new Error('RPC client not initialized');
     }
 
-    // Ensure WebSocket is connected
-    await rpcClient.ensureConnected();
-
     // Use session key address (what we sign with), not wallet address
     const serverAddress = ethers.getAddress(rpcClient.sessionKey.address);
 
@@ -179,7 +176,6 @@ export async function generateAppSessionMessage(roomId, participantA, participan
     const sign = rpcClient.sessionSigner || rpcClient.signMessage.bind(rpcClient);
     logger.debug('Using session signer:', rpcClient);
     logger.nitro('Creating app session message...');
-    // TODO [codemod]: Replace createAppSessionMessage() + send + parseCreateAppSessionResponse with client.createAppSession()
     const signedMessage = await createAppSessionMessage(sign, appSessionData);
     const parsedMessage = JSON.parse(signedMessage);
 

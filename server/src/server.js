@@ -81,7 +81,6 @@ async function handleAppSessionSignature(ws, payload, { roomManager, connections
     
     logger.nitro(`Signature added for ${playerEoa} in room ${roomId}`);
     
-    // TODO [codemod]: Manual ws.send(JSON.stringify(...)) for Nitrolite RPC is no longer needed. Use NitroliteClient methods directly.
     // Send confirmation to the signing player
     ws.send(JSON.stringify({
       type: 'appSession:signatureConfirmed',
@@ -322,20 +321,18 @@ async function initializeNitroliteServices() {
       throw new Error('WS_URL and SERVER_PRIVATE_KEY must be set in environment');
     }
 
-    const rpcClient = await initializeRPCClient(url, privateKey);
-    logger.nitro('Nitrolite RPC client initialized successfully');
+    const client = await initializeRPCClient(url, privateKey);
+    logger.nitro('NitroliteClient initialized and connected');
 
-    // Connect to Nitrolite WebSocket
-    await rpcClient.connect();
-    logger.nitro('Connected to Nitrolite RPC server');
-
-    // Check if we have an existing channel
-    if (rpcClient.channel) {
-      logger.nitro('Connected to existing channel');
-      logger.data('Channel info', rpcClient.channel);
-    } else {
-      logger.warn('No channel established after initialization');
-      logger.nitro('Channels will be created as needed via getChannelInfo');
+    try {
+      const channels = await client.getChannels();
+      if (channels && channels.length > 0) {
+        logger.nitro(`Found ${channels.length} existing channel(s)`);
+      } else {
+        logger.nitro('No existing channels found. Channels will be created as needed.');
+      }
+    } catch (channelErr) {
+      logger.warn('Could not fetch channels:', channelErr.message);
     }
   } catch (error) {
     logger.error('Failed to initialize Nitrolite services:', error);

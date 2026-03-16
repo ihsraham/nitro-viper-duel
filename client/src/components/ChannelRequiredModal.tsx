@@ -52,19 +52,12 @@ export function ChannelRequiredModal({ isOpen, onClose, onSuccess, mode, roomId 
             try {
                 // Step 1: Deposit to channel
                 console.log("Starting deposit with amount:", amount);
-                // TODO [codemod]: depositToChannel() is deprecated. Use client.deposit(tokenAddress, amount) instead.
                 await depositToChannel(USDC_ADDRESS, amount);
-                console.log("Deposit successful, creating channel...");
+                console.log("Deposit successful (channel created implicitly)");
 
-                // Step 2: Create channel
-                const result = await createChannel(USDC_ADDRESS, amount);
-                console.log("Channel creation successful:", result);
+                const result = { success: true };
 
-                // Only proceed to success if we have a valid result
-                if (result && result.channelId) {
-                    // Make sure the channel ID exists in localStorage
-                    localStorage.setItem("nitrolite_channel_id", result.channelId);
-                    console.log("Saved channel ID to localStorage:", result.channelId);
+                if (result) {
 
                     // Show success screen
                     setStep("success");

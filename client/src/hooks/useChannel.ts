@@ -103,20 +103,10 @@ export function useChannel() {
                 console.log("Available client methods:", Object.keys(client));
 
                 const amountBigInt = parseTokenUnits(tokenAddress, amount);
-                // TODO [codemod]: createChannel() is deprecated. Use client.deposit(tokenAddress, amount) instead — it creates the channel implicitly.
-                const result = await client.createChannel(USDC_ADDRESS, {
-                    initialAllocationAmounts: [amountBigInt, BigInt(0)],
-                    stateData: EMPTY_STATE_DATA,
-                });
-
-                saveChannelToStorage(result.initialState, result.channelId);
+                await client.deposit(USDC_ADDRESS, amountBigInt);
                 WalletStore.setChannelOpen(true);
 
-                if (setNitroliteChannel && result) {
-                    setNitroliteChannel(result as any);
-                }
-
-                return result;
+                return { success: true };
             } catch (error) {
                 console.error("Error creating channel:", error);
                 setError(error instanceof Error ? error.message : String(error));

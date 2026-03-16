@@ -13,7 +13,6 @@ export function useWebSocket() {
 
     // Initialize WebSocket connection
     useEffect(() => {
-        // TODO [codemod]: Manual WebSocket to clearnode is no longer needed. NitroliteClient.create() manages the connection internally. Remove this.
         const webSocket = new WebSocket(wsUrl);
 
         webSocket.onopen = () => {

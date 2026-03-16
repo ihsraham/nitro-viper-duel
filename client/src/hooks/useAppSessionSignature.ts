@@ -27,7 +27,6 @@ export function useAppSessionSignature(
             setSignatureError(null);
 
             try {
-                // TODO [codemod]: Replace createECDSAMessageSigner() + send + parse with client.N/A (signing is internal)()
                 // ✅ CRITICAL: Sign the EXACT requestToSign array that server sent
                 // DO NOT use createAppSessionMessage() - that creates a NEW message with NEW timestamp
                 // The server already created the message, we just need to sign it

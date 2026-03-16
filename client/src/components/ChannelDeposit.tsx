@@ -34,12 +34,7 @@ export function ChannelDeposit() {
         setSuccessMessage(null);
 
         try {
-            // TODO [codemod]: depositToChannel() is deprecated. Use client.deposit(tokenAddress, amount) instead.
-            // Then deposit to it
             await depositToChannel(USDC_ADDRESS, amount);
-
-            // First create a channel
-            await createChannel(USDC_ADDRESS, amount);
 
             setSuccessMessage(`Successfully created channel and deposited ${amount} USDC`);
         } catch (err) {

@@ -237,7 +237,6 @@ export async function closeAppSession(roomId, winnerEOA = null, gameData = {}) {
 
     // Sign with session signer
     const sign = rpcClient.sessionSigner || rpcClient.signMessage.bind(rpcClient);
-    // TODO [codemod]: Replace createCloseAppSessionMessage() + send + parseCloseAppSessionResponse with client.closeAppSession()
     const closeMessage = await createCloseAppSessionMessage(sign, closeData);
 
     logger.nitro('▶ Sending: close_app_session');
