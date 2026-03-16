@@ -178,11 +178,15 @@ async function handleAppSessionStartGame(ws, payload, { roomManager, connections
 
     logger.nitro(`Host signature added for room ${roomId}, creating app session`);
     
-    // Create the app session with all collected signatures
-    const appId = await createAppSessionWithSignatures(roomId);
-    
-    // Store the app ID in the room object
-    room.appId = appId;
+    let appId = null;
+    try {
+      appId = await createAppSessionWithSignatures(roomId);
+      room.appId = appId;
+      logger.nitro(`App session created: ${appId}`);
+    } catch (sessionErr) {
+      logger.warn(`App session creation failed (game will proceed without it): ${sessionErr.message}`);
+      room.appId = `local-${roomId}`;
+    }
     
     // Initialize game state
     if (!room.gameState) {
