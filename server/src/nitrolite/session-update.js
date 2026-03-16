@@ -16,7 +16,7 @@
  * ============================================================================
  */
 
-import { createSubmitAppStateMessage } from '@yellow-org/sdk-compat';
+import '@yellow-org/sdk-compat';
 import logger from '../utils/logger.js';
 import { getRPCClient } from './client.js';
 import { getAppSession } from './session-storage.js';
@@ -126,67 +126,10 @@ export async function submitAppState(roomId, gameStateUpdate = {}) {
       session_data: JSON.stringify(updatedSessionData)
     };
 
-    logger.nitro(`▶ Sending: submit_app_state for room ${roomId}`);
+    logger.nitro(`▶ Sending: submit_app_state for room ${roomId} via compat client`);
     logger.data('State update:', stateData);
 
-    // Sign with session signer
-    const sign = rpcClient.sessionSigner || rpcClient.signMessage.bind(rpcClient);
-    const stateMessage = await createSubmitAppStateMessage(sign, stateData);
-
-    // Check WebSocket connection
-    if (!rpcClient.ws) {
-      logger.error('RPC client has no WebSocket instance');
-      throw new Error('RPC client WebSocket not initialized');
-    }
-
-    const wsStates = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'];
-    const currentState = wsStates[rpcClient.ws.readyState] || `UNKNOWN(${rpcClient.ws.readyState})`;
-
-    if (rpcClient.ws.readyState !== 1) {
-      logger.error(`RPC client WebSocket not ready. Current state: ${currentState}`);
-      throw new Error(`RPC client WebSocket not connected (state: ${currentState})`);
-    }
-
-    logger.debug(`WebSocket connected and ready (state: ${currentState})`);
-
-    // Send directly to WebSocket
-    await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout waiting for state submission'));
-      }, 30000);
-
-      const handler = (data) => {
-        try {
-          const msg = typeof data === 'string' ? data : data.toString();
-          const parsed = JSON.parse(msg);
-
-          // Check if this is a response
-          if (parsed.res && Array.isArray(parsed.res)) {
-            const [reqId, method, params] = parsed.res;
-
-            if (method === 'submit_app_state') {
-              clearTimeout(timeout);
-              rpcClient.ws.removeListener('message', handler);
-              logger.nitro('◀ Received: submit_app_state response');
-              resolve(params);
-            }
-          }
-          // Check for error
-          else if (parsed.err && Array.isArray(parsed.err)) {
-            const [reqId, errorCode, errorMsg] = parsed.err;
-            clearTimeout(timeout);
-            rpcClient.ws.removeListener('message', handler);
-            logger.error('◀ Received error:', errorMsg);
-            reject(new Error(`Submit app state failed: ${errorMsg}`));
-          }
-        } catch (err) {
-          // Ignore parsing errors for other messages
-        }
-      };
-
-      rpcClient.ws.on('message', handler);
-      rpcClient.ws.send(stateMessage);
-    });
+    await rpcClient.submitAppState(stateData);
 
     logger.nitro(`✓ App state submitted for room ${roomId}`);
 

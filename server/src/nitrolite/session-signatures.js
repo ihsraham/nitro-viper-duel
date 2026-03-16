@@ -16,7 +16,7 @@
  * ============================================================================
  */
 
-import { parseAnyRPCResponse, RPCMethod } from '@yellow-org/sdk-compat';
+import '@yellow-org/sdk-compat';
 import { ethers } from 'ethers';
 import logger from '../utils/logger.js';
 import { getRPCClient } from './client.js';
@@ -131,81 +131,16 @@ export async function createAppSessionWithSignatures(roomId) {
     logger.nitro('⚠️  CRITICAL: Client must use createAppSessionMessage() from @erc7824/nitrolite');
     logger.nitro('═══════════════════════════════════════════════════════');
 
-    const completeRequest = {
-      req: pending.requestToSign,
-      sig: [
-        sigA,
-        sigB,
-        sigServer
-      ]
-    };
+    logger.nitro('▶ Sending: create_app_session via compat client');
 
-    logger.data('Complete request structure:', completeRequest);
-    logger.data('Request array (for signing):', pending.requestToSign);
-    logger.nitro('▶ Sending: create_app_session');
-
-    // Check WebSocket connection
-    if (!rpcClient.ws) {
-      logger.error('RPC client has no WebSocket instance');
-      throw new Error('RPC client WebSocket not initialized');
-    }
-
-    const wsStates = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'];
-    const currentState = wsStates[rpcClient.ws.readyState] || `UNKNOWN(${rpcClient.ws.readyState})`;
-
-    if (rpcClient.ws.readyState !== 1) {
-      logger.error(`RPC client WebSocket not ready. Current state: ${currentState}`);
-      throw new Error(`RPC client WebSocket not connected (state: ${currentState})`);
-    }
-
-    logger.nitro(`WebSocket connected and ready (state: ${currentState})`);
-
-    // Send directly to WebSocket (multi-signature requests need direct send)
-    const requestString = JSON.stringify(completeRequest);
-    logger.data('Sending JSON:', requestString);
-
-    const response = await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout waiting for app session creation'));
-      }, 30000);
-
-      const handler = (data) => {
-        try {
-          const msg = typeof data === 'string' ? data : data.toString();
-          const parsed = JSON.parse(msg);
-
-          // Check if this is a response (has "res" array)
-          if (parsed.res && Array.isArray(parsed.res)) {
-            const [reqId, method, params] = parsed.res;
-
-            // Match by method name
-            if (method === 'create_app_session') {
-              clearTimeout(timeout);
-              rpcClient.ws.removeListener('message', handler);
-              logger.nitro('◀ Received: create_app_session response');
-              logger.data('Response:', params);
-              resolve(params);
-            }
-          }
-          // Check for error
-          else if (parsed.err && Array.isArray(parsed.err)) {
-            const [reqId, errorCode, errorMsg] = parsed.err;
-            clearTimeout(timeout);
-            rpcClient.ws.removeListener('message', handler);
-            logger.error('◀ Received error:', errorMsg);
-            reject(new Error(`Create app session failed: ${errorMsg}`));
-          }
-        } catch (err) {
-          // Ignore parsing errors for other messages
-        }
-      };
-
-      rpcClient.ws.on('message', handler);
-      rpcClient.ws.send(requestString);
+    const result = await rpcClient.createAppSession({
+      definition: pending.appSessionData.definition,
+      allocations: pending.appSessionData.allocations,
+      session_data: pending.appSessionData.session_data,
+      quorum_sigs: [sigA, sigB, sigServer],
     });
 
-    // Extract app session ID
-    const appSessionId = response.app_session_id || response.appSessionId;
+    const appSessionId = result.appSessionId;
 
     if (!appSessionId) {
       logger.error('No app session ID in response!');
