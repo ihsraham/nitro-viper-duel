@@ -46,6 +46,7 @@ export async function handleJoinRoom(ws, payload, { roomManager, connections, se
     if (result.success) {
       console.log(`New room created: ${newRoomId} for player (host): ${eoa}`);
       
+      // TODO [codemod]: Manual ws.send(JSON.stringify(...)) for Nitrolite RPC is no longer needed. Use NitroliteClient methods directly.
       // Send room ID to client immediately so they can share it
       ws.send(JSON.stringify({
         type: 'room:created',
@@ -143,6 +144,7 @@ export async function handleGetAvailableRooms(ws, { roomManager }) {
     }
   }
   
+  // TODO [codemod]: Manual ws.send(JSON.stringify(...)) for Nitrolite RPC is no longer needed. Use NitroliteClient methods directly.
   // Send available rooms to client
   ws.send(JSON.stringify({
     type: 'room:available',

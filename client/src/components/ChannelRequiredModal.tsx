@@ -52,6 +52,7 @@ export function ChannelRequiredModal({ isOpen, onClose, onSuccess, mode, roomId 
             try {
                 // Step 1: Deposit to channel
                 console.log("Starting deposit with amount:", amount);
+                // TODO [codemod]: depositToChannel() is deprecated. Use client.deposit(tokenAddress, amount) instead.
                 await depositToChannel(USDC_ADDRESS, amount);
                 console.log("Deposit successful, creating channel...");
 

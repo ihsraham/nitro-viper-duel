@@ -26,7 +26,7 @@ import {
     RPCMethod,
     parseAnyRPCResponse,
     createECDSAMessageSigner
-} from "@erc7824/nitrolite";
+} from '@yellow-org/sdk-compat';
 import logger from "../utils/logger.js";
 import { createNitroliteWalletClient, generateKeyPair } from "./signer.js";
 
@@ -65,6 +65,7 @@ export async function authenticateWithSessionKey(ws, walletAddress, privateKey, 
     const sessionKey = await generateKeyPair();
     logger.auth("Session key generated:", sessionKey.address);
 
+    // TODO [codemod]: Replace createECDSAMessageSigner() + send + parse with client.N/A (signing is internal)()
     // Step 2: Create session signer
     const sessionSigner = createECDSAMessageSigner(sessionKey.privateKey);
     logger.auth("Session signer created");
@@ -83,10 +84,12 @@ export async function authenticateWithSessionKey(ws, walletAddress, privateKey, 
         app_name: "Viper Duel",
         application: walletAddress,
         session_key: sessionKey.address,
-        expire: expire,
+        // TODO [codemod]: expires_at must be BigInt(seconds since epoch). Convert from old expire format.
+        expires_at: expire,
         scope: "all",
     };
 
+    // TODO [codemod]: Replace createAuthRequestMessage() + send + parse with client.N/A (auth is automatic)()
     // Prepare auth request message (await the Promise)
     const authRequest = await createAuthRequestMessage(authMessage);
     logger.auth("▶ Sending: auth_request with session key:", sessionKey.address);
@@ -119,6 +122,7 @@ export async function authenticateWithSessionKey(ws, walletAddress, privateKey, 
                     // Create wallet client for EIP-712 signing
                     const walletClient = createNitroliteWalletClient(privateKey);
 
+                    // TODO [codemod]: Replace createEIP712AuthMessageSigner() + send + parse with client.N/A (auth is automatic)()
                     // Create EIP-712 signer
                     const eip712SigningFunction = createEIP712AuthMessageSigner(
                         walletClient,
@@ -132,6 +136,7 @@ export async function authenticateWithSessionKey(ws, walletAddress, privateKey, 
                         AUTH_DOMAIN
                     );
 
+                    // TODO [codemod]: Replace createAuthVerifyMessage() + send + parse with client.N/A (auth is automatic)()
                     // Sign and send auth_verify
                     const authVerify = await createAuthVerifyMessage(eip712SigningFunction, response);
                     logger.auth("▶ Sending: auth_verify with EIP-712 signature");

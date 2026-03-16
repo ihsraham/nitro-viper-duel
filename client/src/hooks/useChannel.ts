@@ -4,7 +4,7 @@ import { NitroliteStore, WalletStore } from "../store";
 import { useStore } from "../store/storeUtils";
 import { parseTokenUnits } from "./utils/tokenDecimals";
 import { useWebSocketContext } from "../context/WebSocketContext";
-import type { State } from "@erc7824/nitrolite";
+import type { State } from '@yellow-org/sdk-compat';
 import { USDC_ADDRESS } from '../context/NitroliteClientWrapper';
 
 // Define localStorage keys
@@ -103,6 +103,7 @@ export function useChannel() {
                 console.log("Available client methods:", Object.keys(client));
 
                 const amountBigInt = parseTokenUnits(tokenAddress, amount);
+                // TODO [codemod]: createChannel() is deprecated. Use client.deposit(tokenAddress, amount) instead — it creates the channel implicitly.
                 const result = await client.createChannel(USDC_ADDRESS, {
                     initialAllocationAmounts: [amountBigInt, BigInt(0)],
                     stateData: EMPTY_STATE_DATA,

@@ -1,6 +1,6 @@
 import { type Hex } from "viem";
 import { ethers } from "ethers";
-import { type MessageSigner, type RPCData } from "@erc7824/nitrolite";
+import { type MessageSigner, type NitroliteRPCRequest } from '@yellow-org/sdk-compat';
 
 /**
  * Interface for a cryptographic keypair

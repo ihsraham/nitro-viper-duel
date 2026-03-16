@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode, useRef } from "react";
 import { WebSocketClient, createWebSocketClient, type WSStatus, type WalletSigner, getAddressFromPublicKey } from "../websocket";
-import type { Channel } from "@erc7824/nitrolite";
+import type { Channel } from '@yellow-org/sdk-compat';
 import APP_CONFIG from "./app";
 import { generateKeyPair, createEthersSigner } from "./createSigner";
 import { WalletStore } from "../store";

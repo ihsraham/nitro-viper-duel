@@ -11,8 +11,8 @@ import {
     RPCMethod,
     createECDSAMessageSigner,
     type MessageSigner,
-} from "@erc7824/nitrolite";
-import type { Channel } from "@erc7824/nitrolite";
+} from '@yellow-org/sdk-compat';
+import type { Channel } from '@yellow-org/sdk-compat';
 import { WalletStore } from "../store";
 import { generateKeyPair, type CryptoKeypair } from "../context/createSigner";
 
@@ -219,6 +219,7 @@ export class WebSocketClient {
                     }
                 };
 
+                // TODO [codemod]: Replace WebSocket push-event handling with EventPoller. Example: new EventPoller(client, { onChannelUpdate, onBalanceUpdate, onAssetsUpdate, onError }, 5000)
                 this.ws.onmessage = this.handleMessage.bind(this);
 
                 this.ws.onerror = () => {
@@ -280,6 +281,7 @@ export class WebSocketClient {
             this.sessionKey = await generateKeyPair();
             console.log("Session key generated:", this.sessionKey.address);
 
+            // TODO [codemod]: Replace createECDSAMessageSigner() + send + parse with client.N/A (signing is internal)()
             // Create session signer from session key private key
             this.sessionSigner = createECDSAMessageSigner(this.sessionKey.privateKey as Hex);
             console.log("Session signer created for WebSocket message signing", this.sessionSigner);
@@ -301,11 +303,13 @@ export class WebSocketClient {
             authRequest = await createAuthVerifyMessageWithJWT(jwtToken);
         } else {
             console.log("No JWT token found, proceeding with challenge-response authentication");
+            // TODO [codemod]: Replace createAuthRequestMessage() + send + parse with client.N/A (auth is automatic)()
             authRequest = await createAuthRequestMessage({
                 address: ethers.getAddress(privyWalletAddress) as `0x${string}`, // wallet
                 session_key: this.sessionKey.address as `0x${string}`, // ephemeral session key
                 app_name: "Viper Duel",
-                expire: expire,
+                // TODO [codemod]: expires_at must be BigInt(seconds since epoch). Convert from old expire format.
+                expires_at: expire,
                 scope: "all",
                 application: ethers.getAddress(privyWalletAddress) as `0x${string}`,
                 allowances: [
@@ -340,6 +344,7 @@ export class WebSocketClient {
 
                         try {
                             console.log("Creating EIP-712 signing function...");
+                            // TODO [codemod]: Replace createEIP712AuthMessageSigner() + send + parse with client.N/A (auth is automatic)()
                             const eip712SigningFunction = createEIP712AuthMessageSigner(
                                 walletClient,
                                 {
@@ -358,6 +363,7 @@ export class WebSocketClient {
                             );
 
                             console.log("Calling createAuthVerifyMessage...");
+                            // TODO [codemod]: Replace createAuthVerifyMessage() + send + parse with client.N/A (auth is automatic)()
                             const authVerify = await createAuthVerifyMessage(eip712SigningFunction, response);
 
                             console.log("Sending auth_verify with EIP-712 signature");
@@ -399,6 +405,7 @@ export class WebSocketClient {
                         if (useSessionSigner && this.sessionKey) {
                             console.log("Session key address:", this.sessionKey.address);
                         }
+                        // TODO [codemod]: NitroliteRPC.signRequestMessage() is no longer needed. NitroliteClient handles signing internally.
                         const getChannelMessage = await NitroliteRPC.signRequestMessage(getChannelsMessage, signer);
                         console.log("getChannelMessage", getChannelMessage);
                         this.ws?.send(JSON.stringify(getChannelMessage));
@@ -681,6 +688,7 @@ export class WebSocketClient {
     async ping(): Promise<unknown> {
         // Use session signer for RPC messages after authentication
         const signer = this.sessionSigner || this.signer.sign;
+        // TODO [codemod]: Replace createPingMessage() + send + parse with client.ping()
         return this.sendRequest(await createPingMessage(signer));
     }
 }

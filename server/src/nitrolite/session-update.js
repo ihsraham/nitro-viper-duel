@@ -16,7 +16,7 @@
  * ============================================================================
  */
 
-import { createSubmitAppStateMessage } from "@erc7824/nitrolite";
+import { createSubmitAppStateMessage } from '@yellow-org/sdk-compat';
 import logger from '../utils/logger.js';
 import { getRPCClient } from './client.js';
 import { getAppSession } from './session-storage.js';
@@ -132,6 +132,7 @@ export async function submitAppState(roomId, gameStateUpdate = {}) {
 
     // Sign with session signer
     const sign = rpcClient.sessionSigner || rpcClient.signMessage.bind(rpcClient);
+    // TODO [codemod]: Replace createSubmitAppStateMessage() + send + parseSubmitAppStateResponse with client.submitAppState()
     const stateMessage = await createSubmitAppStateMessage(sign, stateData);
 
     // Check WebSocket connection

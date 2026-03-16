@@ -81,6 +81,7 @@ async function handleAppSessionSignature(ws, payload, { roomManager, connections
     
     logger.nitro(`Signature added for ${playerEoa} in room ${roomId}`);
     
+    // TODO [codemod]: Manual ws.send(JSON.stringify(...)) for Nitrolite RPC is no longer needed. Use NitroliteClient methods directly.
     // Send confirmation to the signing player
     ws.send(JSON.stringify({
       type: 'appSession:signatureConfirmed',

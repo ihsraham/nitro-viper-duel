@@ -22,7 +22,7 @@
  * ============================================================================
  */
 
-import { NitroliteRPC, RPCMethod, parseAnyRPCResponse } from "@erc7824/nitrolite";
+import { NitroliteRPC, RPCMethod, parseAnyRPCResponse } from '@yellow-org/sdk-compat';
 import { ethers } from "ethers";
 import WebSocket from "ws";
 import logger from "../utils/logger.js";
@@ -230,6 +230,7 @@ export class NitroliteRPCClient {
             try {
                 // Create and sign request
                 const request = NitroliteRPC.createRequest({ method, params, requestId });
+                // TODO [codemod]: NitroliteRPC.signRequestMessage() is no longer needed. NitroliteClient handles signing internally.
                 const signedRequest = await NitroliteRPC.signRequestMessage(request, signer);
 
                 // Log outgoing request

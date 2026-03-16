@@ -3,7 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { createPublicClient, http, type Hex } from "viem";
 import { NitroliteStore, WalletStore } from "../store";
-import { NitroliteClient, type ContractAddresses } from "@erc7824/nitrolite";
+import { NitroliteClient, type ContractAddresses } from '@yellow-org/sdk-compat';
 
 import { ethers } from "ethers";
 import { generateKeyPair } from "./createSigner";
@@ -122,6 +122,7 @@ export function NitroliteClientWrapper({ children }: NitroliteClientWrapperProps
                 WalletStore.setWalletClient(walletClient);
                 console.log("Wallet client set successfully:", walletClient.account);
 
+                // TODO [codemod]: Manual contract addresses (custody, adjudicator) are no longer needed. They are fetched from clearnode get_config automatically.
                 const addresses: ContractAddresses = {
                     custody: APP_CONFIG.CUSTODIES[polygon.id],
                     adjudicator: APP_CONFIG.ADJUDICATORS[polygon.id],
@@ -130,6 +131,7 @@ export function NitroliteClientWrapper({ children }: NitroliteClientWrapperProps
 
                 const challengeDuration = APP_CONFIG.CHANNEL.CHALLENGE_PERIOD;
 
+                // TODO [codemod]: Manual contract addresses (custody, adjudicator) are no longer needed. They are fetched from clearnode get_config automatically.
                 console.log("Creating Nitrolite client with params:", {
                     publicClientAvailable: !!publicClient,
                     walletClientAvailable: !!walletClient,
@@ -145,17 +147,12 @@ export function NitroliteClientWrapper({ children }: NitroliteClientWrapperProps
                 });
 
                 // Create the Nitrolite client
-                const client = new NitroliteClient({
-                    // @ts-ignore
-                    publicClient,
-                    // @ts-ignore
-                    walletClient,
-                    // @ts-ignore
-                    stateWalletClient: stateWalletClient,
-                    account: walletClient.account,
-                    chainId: polygon.id,
-                    challengeDuration: challengeDuration,
-                    addresses,
+                const client = // TODO [codemod]: Verify wsURL, chainId, blockchainRPCs. Old props (addresses, stateSigner, publicClient) are no longer needed.
+                await NitroliteClient.create({
+                    wsURL: wsURL,
+                    walletClient: walletClient,
+                    chainId: chainId,
+                    blockchainRPCs: blockchainRPCs
                 });
 
                 // Check if client was created successfully

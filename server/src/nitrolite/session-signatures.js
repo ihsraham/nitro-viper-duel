@@ -16,7 +16,7 @@
  * ============================================================================
  */
 
-import { parseAnyRPCResponse, RPCMethod } from "@erc7824/nitrolite";
+import { parseAnyRPCResponse, RPCMethod } from '@yellow-org/sdk-compat';
 import { ethers } from 'ethers';
 import logger from '../utils/logger.js';
 import { getRPCClient } from './client.js';

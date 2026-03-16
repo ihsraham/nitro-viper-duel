@@ -16,7 +16,7 @@
  * ============================================================================
  */
 
-import { createAppSessionMessage } from "@erc7824/nitrolite";
+import { createAppSessionMessage } from '@yellow-org/sdk-compat';
 import { ethers } from 'ethers';
 import logger from '../utils/logger.js';
 import { getRPCClient } from './client.js';
@@ -179,6 +179,7 @@ export async function generateAppSessionMessage(roomId, participantA, participan
     const sign = rpcClient.sessionSigner || rpcClient.signMessage.bind(rpcClient);
     logger.debug('Using session signer:', rpcClient);
     logger.nitro('Creating app session message...');
+    // TODO [codemod]: Replace createAppSessionMessage() + send + parseCreateAppSessionResponse with client.createAppSession()
     const signedMessage = await createAppSessionMessage(sign, appSessionData);
     const parsedMessage = JSON.parse(signedMessage);
 

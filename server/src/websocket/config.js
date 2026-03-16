@@ -29,6 +29,7 @@ export function createWebSocketServer() {
  * @param {string} msg - Error message
  */
 export function sendError(ws, code, msg) {
+  // TODO [codemod]: Manual ws.send(JSON.stringify(...)) for Nitrolite RPC is no longer needed. Use NitroliteClient methods directly.
   ws.send(JSON.stringify({
     type: 'error',
     code,

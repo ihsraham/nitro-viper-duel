@@ -6,7 +6,8 @@ import { type Address } from "viem";
  * This file contains configuration settings for the application,
  * including network endpoints and default values.
  */
-export const APP_CONFIG = {
+export // TODO [codemod]: Manual contract addresses (custody, adjudicator) are no longer needed. They are fetched from clearnode get_config automatically.
+const APP_CONFIG = {
     // WebSocket configuration for real-time communication
     WEBSOCKET: {
         URL: "wss://clearnet.yellow.com/ws",
