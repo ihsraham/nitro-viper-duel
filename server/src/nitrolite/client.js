@@ -4,6 +4,11 @@
  * Wraps NitroliteClient from @yellow-org/sdk-compat for the game server.
  * Auth, WebSocket, and signing are handled internally by the client.
  */
+import WebSocket from 'ws';
+if (typeof globalThis.WebSocket === 'undefined') {
+    globalThis.WebSocket = WebSocket;
+}
+
 import { NitroliteClient, blockchainRPCsFromEnv, createECDSAMessageSigner } from '@yellow-org/sdk-compat';
 import { createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
