@@ -43,7 +43,6 @@ const wss = createWebSocketServer();
 const roomManager = createRoomManager();
 
 // Track active connections
-// TODO: Use @erc7824/nitrolite for connection tracking when available
 const connections = new Map();
 
 // Track online users count
@@ -328,16 +327,15 @@ async function initializeNitroliteServices() {
     const client = await initializeRPCClient(url, privateKey);
     logger.nitro('NitroliteClient initialized and connected');
 
-    try {
-      const channels = await client.getChannels();
+    client.getChannels().then(channels => {
       if (channels && channels.length > 0) {
         logger.nitro(`Found ${channels.length} existing channel(s)`);
       } else {
         logger.nitro('No existing channels found. Channels will be created as needed.');
       }
-    } catch (channelErr) {
+    }).catch(channelErr => {
       logger.warn('Could not fetch channels:', channelErr.message);
-    }
+    });
   } catch (error) {
     logger.error('Failed to initialize Nitrolite services:', error);
     logger.system('Continuing in mock mode without Nitrolite channel');

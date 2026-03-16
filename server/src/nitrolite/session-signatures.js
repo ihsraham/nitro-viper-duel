@@ -16,7 +16,6 @@
  * ============================================================================
  */
 
-import '@yellow-org/sdk-compat';
 import { ethers } from 'ethers';
 import logger from '../utils/logger.js';
 import { getRPCClient } from './client.js';
@@ -128,7 +127,7 @@ export async function createAppSessionWithSignatures(roomId) {
     logger.data(`    Length: ${sigServer ? sigServer.length : 'null'}`);
     logger.nitro('');
     logger.nitro('⚠️  CRITICAL: Client must sign using SESSION KEY, not main wallet!');
-    logger.nitro('⚠️  CRITICAL: Client must use createAppSessionMessage() from @erc7824/nitrolite');
+    logger.nitro('⚠️  CRITICAL: Client must use createAppSessionMessage() from @yellow-org/sdk-compat');
     logger.nitro('═══════════════════════════════════════════════════════');
 
     logger.nitro('▶ Sending: create_app_session via compat client');
@@ -144,7 +143,7 @@ export async function createAppSessionWithSignatures(roomId) {
 
     if (!appSessionId) {
       logger.error('No app session ID in response!');
-      logger.data('Response object:', response);
+      logger.data('Response object:', result);
       throw new Error('App session created but no ID returned');
     }
 

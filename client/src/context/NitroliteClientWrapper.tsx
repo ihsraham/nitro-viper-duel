@@ -20,7 +20,7 @@ interface NitroliteContextType {
 
 const NitroliteContext = createContext<NitroliteContextType>({
     client: null,
-    loading: true,
+    loading: false,
     error: null,
 });
 
@@ -33,7 +33,7 @@ interface NitroliteClientWrapperProps {
 export function NitroliteClientWrapper({ children }: NitroliteClientWrapperProps) {
     const [clientState, setClientState] = useState<NitroliteContextType>({
         client: null,
-        loading: true,
+        loading: false,
         error: null,
     });
 
@@ -42,21 +42,29 @@ export function NitroliteClientWrapper({ children }: NitroliteClientWrapperProps
 
     useEffect(() => {
         const initializeNitrolite = async () => {
+            if (!isConnected || !address || !walletClient) {
+                setClientState({ client: null, loading: false, error: null });
+                return;
+            }
+
             try {
                 setClientState((prev) => ({ ...prev, loading: true, error: null }));
-
-                if (!isConnected || !address || !walletClient) {
-                    setClientState((prev) => ({
-                        ...prev,
-                        loading: false,
-                        error: "Wallet not connected. Please connect your wallet.",
-                    }));
-                    return;
-                }
 
                 WalletStore.setWalletClient(walletClient);
 
                 const blockchainRPCs = blockchainRPCsFromEnv();
+
+                const viteRPCs = import.meta.env.VITE_BLOCKCHAIN_RPCS as string | undefined;
+                if (viteRPCs) {
+                    for (const pair of viteRPCs.split(',').filter(Boolean)) {
+                        const idx = pair.indexOf(':');
+                        if (idx === -1) continue;
+                        const chainId = Number(pair.slice(0, idx).trim());
+                        const rpcUrl = pair.slice(idx + 1).trim();
+                        if (Number.isFinite(chainId) && rpcUrl) blockchainRPCs[chainId] = rpcUrl;
+                    }
+                }
+
                 if (!blockchainRPCs[polygon.id]) {
                     blockchainRPCs[polygon.id] = polygon.rpcUrls.default.http[0];
                 }

@@ -4,7 +4,6 @@ import { NitroliteStore, WalletStore } from "../store";
 import { useStore } from "../store/storeUtils";
 import { parseTokenUnits } from "./utils/tokenDecimals";
 import { useWebSocketContext } from "../context/WebSocketContext";
-import type { State } from '@yellow-org/sdk-compat';
 import { USDC_ADDRESS } from '../context/NitroliteClientWrapper';
 
 // Define localStorage keys
@@ -21,7 +20,7 @@ export function useChannel() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const { currentNitroliteChannel, setNitroliteChannel } = useWebSocketContext();
+    const { currentNitroliteChannel } = useWebSocketContext();
     const walletState = useStore(WalletStore.state);
 
     /**
@@ -43,22 +42,6 @@ export function useChannel() {
         console.log("No existing channel found");
         return { exists: false };
     }, [walletState.channelOpen]);
-
-    /**
-     * Save channel state to localStorage
-     */
-    const saveChannelToStorage = useCallback((state: State, channelId: string) => {
-        try {
-            const stateData = JSON.stringify(state, (_, value) => (typeof value === "bigint" ? value.toString() + "n" : value));
-
-            localStorage.setItem(STORAGE_KEYS.CHANNEL_STATE, stateData);
-            localStorage.setItem(STORAGE_KEYS.CHANNEL_ID, channelId);
-
-            console.log("Saved channel data to localStorage");
-        } catch (error) {
-            console.error("Failed to save channel to localStorage:", error);
-        }
-    }, []);
 
     /**
      * Create a new Nitrolite channel
@@ -114,7 +97,7 @@ export function useChannel() {
                 setIsLoading(false);
             }
         },
-        [checkForExistingChannel, saveChannelToStorage, setNitroliteChannel]
+        [checkForExistingChannel]
     );
 
     /**

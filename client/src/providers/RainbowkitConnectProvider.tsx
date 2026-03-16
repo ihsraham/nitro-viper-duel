@@ -17,7 +17,7 @@ const connectors = connectorsForWallets(
     ],
     {
         appName: "Viper Duel",
-        projectId: import.meta.env?.NEXT_PUBLIC_PROJECT_ID ?? "7e477e0ec531e636b5ab844fff3db798",
+        projectId: import.meta.env?.VITE_WALLETCONNECT_PROJECT_ID ?? "7e477e0ec531e636b5ab844fff3db798",
     }
 );
 

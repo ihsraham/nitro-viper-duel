@@ -4,6 +4,10 @@
  * The published SDK dist uses bare relative imports (e.g. `from './utils'`,
  * `from './core'`) without .js extensions. Node strict ESM rejects these.
  * This script resolves each import to either a .js file or a directory index.
+ *
+ * NOTE: Remove this script once SDK PR #623 is merged and a new version
+ * of @yellow-org/sdk and @yellow-org/sdk-compat is published with proper
+ * .js extensions in the dist output.
  */
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
